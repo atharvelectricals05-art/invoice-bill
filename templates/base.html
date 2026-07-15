@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Atharva{% endblock %} — Atharva Electricals</title>
+  <meta name="description" content="Atharva — Billing, Payments &amp; Analytics for Atharva Electricals">
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Custom CSS -->
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/atharva.css' %}">
+  <style>
+  /* ── Mobile sidebar overlay ── */
+  .sidebar-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+  }
+  .sidebar-overlay.active { display: block; }
+
+  /* ── Hamburger button ── */
+  .topbar-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.3rem;
+    padding: 0 8px 0 0;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 1000;
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    .main-wrapper {
+      margin-left: 0 !important;
+    }
+    .topbar-hamburger {
+      display: inline-flex;
+      align-items: center;
+    }
+    /* Make invoice form full-width on mobile */
+    .col-lg-8, .col-lg-4 {
+      width: 100% !important;
+    }
+    /* Tighten table overflow on mobile */
+    .table-responsive { overflow-x: auto; }
+    /* Topbar title smaller on mobile */
+    .topbar-title { font-size: 0.95rem; }
+  }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">⚡ Atharva</div>
+    <div class="brand-sub">Electricals &amp; Trading</div>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <a href="{% url 'billing:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+
+    <div class="nav-section-label">Billing</div>
+    <a href="{% url 'billing:invoice_list' %}" class="nav-link {% if 'invoice' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-receipt"></i> Invoices
+    </a>
+    <a href="{% url 'billing:invoice_create' %}" class="nav-link">
+      <i class="bi bi-plus-circle"></i> New Invoice
+    </a>
+
+    <div class="nav-section-label">Payments</div>
+    <a href="{% url 'billing:payment_list' %}" class="nav-link {% if 'payment' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cash-coin"></i> Payments
+    </a>
+    <a href="{% url 'billing:payment_create' %}" class="nav-link">
+      <i class="bi bi-plus-circle"></i> Record Payment
+    </a>
+
+    <div class="nav-section-label">Parties</div>
+    <a href="{% url 'billing:party_list' %}" class="nav-link {% if 'party' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-people"></i> All Parties
+    </a>
+    <a href="{% url 'billing:party_create' %}" class="nav-link">
+      <i class="bi bi-person-plus"></i> Add Party
+    </a>
+
+    <div class="nav-section-label">Settings</div>
+    <a href="{% url 'billing:company_profile' %}" class="nav-link {% if request.resolver_match.url_name == 'company_profile' %}active{% endif %}">
+      <i class="bi bi-building"></i> Company Profile
+    </a>
+    {% if user.is_staff %}
+    <a href="{% url 'admin:index' %}" class="nav-link" target="_blank">
+      <i class="bi bi-shield-lock"></i> Admin Panel
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-circle bg-primary-light d-flex align-items-center justify-content-center"
+           style="width:32px;height:32px;background:rgba(255,255,255,0.12);flex-shrink:0;">
+        <i class="bi bi-person-fill text-white" style="font-size:0.9rem;"></i>
+      </div>
+      <div>
+        <div class="text-white" style="font-size:0.78rem;font-weight:600;">{{ user.get_full_name|default:user.username }}</div>
+        <a href="{% url 'logout' %}" class="text-decoration-none" style="font-size:0.7rem;color:rgba(255,255,255,0.45);">
+          Sign out
+        </a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main Content ── -->
+<div class="main-wrapper">
+  <div class="topbar">
+    <div class="d-flex align-items-center gap-2">
+      <button class="topbar-hamburger" id="sidebarToggle" aria-label="Open menu">
+        <i class="bi bi-list"></i>
+      </button>
+      <span class="topbar-title">{% block topbar_title %}{% endblock %}</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% block topbar_actions %}{% endblock %}
+    </div>
+  </div>
+
+  <div class="main-content">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+{% else %}
+  {% block auth_content %}{% endblock %}
+{% endif %}
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% if user.is_authenticated %}
+<script>
+// ── Mobile sidebar toggle ──────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const toggle  = document.getElementById('sidebarToggle');
+
+toggle.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('active');
+});
+overlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  overlay.classList.remove('active');
+});
+
+// Close sidebar when a nav link is clicked on mobile
+sidebar.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    if (window.innerWidth <= 768) {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    }
+  });
+});
+</script>
+{% endif %}
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

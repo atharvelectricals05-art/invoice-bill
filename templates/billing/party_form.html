@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'billing:party_list' %}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-arrow-left me-1"></i>Back
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">{{ title }}</div>
+      <div class="card-body">
+        <form method="post" id="party-form">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Name *</label>
+              {{ form.name }}
+              {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Phone</label>
+              {{ form.phone }}
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">Address</label>
+              {{ form.address }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">City</label>
+              {{ form.city }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">State</label>
+              {{ form.state }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">State Code</label>
+              {{ form.state_code }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">GSTIN</label>
+              {{ form.gstin }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Contact Person</label>
+              {{ form.contact_person }}
+            </div>
+          </div>
+          <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="btn btn-primary" id="save-party-btn">
+              <i class="bi bi-check-circle me-1"></i>Save Party
+            </button>
+            <a href="{% url 'billing:party_list' %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

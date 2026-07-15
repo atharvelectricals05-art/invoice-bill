@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load billing_tags %}
+
+{% block title %}Parties{% endblock %}
+{% block topbar_title %}All Parties{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'billing:party_create' %}" class="btn btn-primary btn-sm">
+  <i class="bi bi-person-plus me-1"></i>Add Party
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-body p-0">
+    {% if party_data %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Party Name</th>
+            <th>City / State</th>
+            <th>GSTIN</th>
+            <th class="text-end">Invoiced</th>
+            <th class="text-end">Received</th>
+            <th class="text-end">Outstanding</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in party_data %}
+          <tr>
+            <td>
+              <a href="{% url 'billing:party_detail' row.party.pk %}" class="fw-600 text-decoration-none" style="color:var(--primary);">
+                {{ row.party.name }}
+              </a>
+              {% if row.party.contact_person %}
+              <div class="small text-muted">{{ row.party.contact_person }}</div>
+              {% endif %}
+            </td>
+            <td class="small text-muted">
+              {{ row.party.city }}{% if row.party.state %}, {{ row.party.state }}{% endif %}
+            </td>
+            <td class="small font-monospace">{{ row.party.gstin|default:"—" }}</td>
+            <td class="text-end">{{ row.total_invoiced|currency }}</td>
+            <td class="text-end text-success">{{ row.total_received|currency }}</td>
+            <td class="text-end">
+              <span class="fw-600 {% if row.outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+                {{ row.outstanding|currency }}
+              </span>
+            </td>
+            <td>
+              <a href="{% url 'billing:party_detail' row.party.pk %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-people display-4 d-block mb-2"></i>
+      <div>No parties yet.</div>
+      <a href="{% url 'billing:party_create' %}" class="btn btn-primary mt-3">Add First Party</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

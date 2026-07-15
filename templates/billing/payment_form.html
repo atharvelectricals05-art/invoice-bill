@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load billing_tags %}
+
+{% block title %}Record Payment{% endblock %}
+{% block topbar_title %}Record Payment{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'billing:payment_list' %}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-arrow-left me-1"></i>Back
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-sm-10 col-md-8 col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-cash-coin me-2"></i>Payment Details</div>
+      <div class="card-body">
+        <form method="post" id="payment-form">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Party *</label>
+            {{ form.party }}
+            {% if form.party.errors %}<div class="text-danger small">{{ form.party.errors }}</div>{% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Against Invoice <span class="text-muted fw-normal">(optional)</span></label>
+            <select name="invoice" id="id_invoice" class="form-select">
+              <option value="">— Select invoice —</option>
+              {% for inv in form.invoice.field.queryset %}
+              <option value="{{ inv.pk }}" {% if form.invoice.value == inv.pk %}selected{% endif %}>
+                {{ inv.invoice_no }} — ₹{{ inv.get_outstanding }} outstanding
+              </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Leave blank for advance/general payments.</div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Amount *</label>
+              {{ form.amount }}
+              {% if form.amount.errors %}<div class="text-danger small">{{ form.amount.errors }}</div>{% endif %}
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Date *</label>
+              {{ form.date }}
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Mode</label>
+              {{ form.mode }}
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Reference No.</label>
+              {{ form.reference_no }}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Notes</label>
+            {{ form.notes }}
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-success" id="save-payment-btn">
+              <i class="bi bi-check-circle me-1"></i>Record Payment
+            </button>
+            <a href="{% url 'billing:payment_list' %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PARTY_INVOICES_URL = "{% url 'billing:party_invoices' %}";
+
+const partySelect  = document.getElementById('id_party');
+const invoiceSelect = document.getElementById('id_invoice');
+
+async function loadInvoices(partyId) {
+  // Clear existing options
+  invoiceSelect.innerHTML = '<option value="">— loading... —</option>';
+  invoiceSelect.disabled = true;
+
+  if (!partyId) {
+    invoiceSelect.innerHTML = '<option value="">— select a party first —</option>';
+    invoiceSelect.disabled = false;
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${PARTY_INVOICES_URL}?party_id=${partyId}`);
+    const data = await resp.json();
+    invoiceSelect.innerHTML = '<option value="">— no invoice (advance) —</option>';
+    data.invoices.forEach(inv => {
+      const opt = document.createElement('option');
+      opt.value = inv.id;
+      opt.textContent = inv.text;
+      invoiceSelect.appendChild(opt);
+    });
+    // Restore any pre-selected invoice (e.g. coming from invoice detail page)
+    const preSelected = "{{ form.invoice.value|default:'' }}";
+    if (preSelected) invoiceSelect.value = preSelected;
+  } catch(e) {
+    invoiceSelect.innerHTML = '<option value="">— could not load invoices —</option>';
+  }
+  invoiceSelect.disabled = false;
+}
+
+// When party changes, reload invoices
+partySelect.addEventListener('change', function() {
+  loadInvoices(this.value);
+});
+
+// On page load, if a party is already selected, load its invoices
+if (partySelect.value) {
+  loadInvoices(partySelect.value);
+}
+
+// Auto-fill amount when an invoice is selected
+invoiceSelect.addEventListener('change', function() {
+  // Could prefill amount from outstanding — left for server-side for now
+});
+</script>
+{% endblock %}

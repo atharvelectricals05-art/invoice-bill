@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block auth_content %}
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-text">⚡ Atharva</div>
+      <div class="logo-sub">Electricals &amp; Trading</div>
+    </div>
+
+    <h5 class="text-center fw-semibold mb-1" style="color:var(--primary);">Welcome back</h5>
+    <p class="text-center text-muted small mb-4">Sign in to your billing dashboard</p>
+
+    {% if form.errors %}
+      <div class="alert alert-danger py-2 small">
+        <i class="bi bi-exclamation-circle me-1"></i>
+        Invalid username or password. Please try again.
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'login' %}" id="login-form">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div class="mb-3">
+        <label for="id_username" class="form-label">Username</label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0">
+            <i class="bi bi-person" style="color:var(--text-muted)"></i>
+          </span>
+          <input type="text" name="username" id="id_username" class="form-control border-start-0"
+                 placeholder="Enter username" autofocus required>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label for="id_password" class="form-label">Password</label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0">
+            <i class="bi bi-lock" style="color:var(--text-muted)"></i>
+          </span>
+          <input type="password" name="password" id="id_password" class="form-control border-start-0"
+                 placeholder="Enter password" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 py-2 fw-600" id="login-btn">
+        <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+      </button>
+    </form>
+
+    <p class="text-center mt-4 mb-0" style="font-size:0.72rem;color:var(--text-muted);">
+      Atharva Billing System &copy; {{ now.year|default:"2024" }} — Authorised Users Only
+    </p>
+  </div>
+</div>
+{% endblock %}

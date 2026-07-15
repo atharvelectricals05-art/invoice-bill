@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% load billing_tags %}
+
+{% block title %}{{ invoice.invoice_no }}{% endblock %}
+{% block topbar_title %}Invoice {{ invoice.invoice_no }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'billing:invoice_list' %}" class="btn btn-sm btn-outline-secondary">
+  <i class="bi bi-arrow-left me-1"></i>Back
+</a>
+<a href="{% url 'billing:invoice_edit' invoice.pk %}" class="btn btn-sm btn-outline-primary">
+  <i class="bi bi-pencil me-1"></i>Edit
+</a>
+<a href="{% url 'billing:invoice_pdf' invoice.pk %}" class="btn btn-sm btn-dark-navy" target="_blank">
+  <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+</a>
+<a href="{% url 'billing:payment_create' %}?invoice={{ invoice.pk }}" class="btn btn-sm btn-success">
+  <i class="bi bi-cash me-1"></i>Record Payment
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Main invoice card -->
+  <div class="col-lg-8">
+    <div class="card">
+      <!-- Header -->
+      <div class="card-body" style="background: var(--primary); color:#fff; border-radius:10px 10px 0 0;">
+        <div class="row align-items-center">
+          <div class="col">
+            <h4 class="mb-0 fw-700">{{ company.name }}</h4>
+            <div style="font-size:0.8rem;opacity:0.8;">{{ company.address }}</div>
+            {% if company.gstin %}<div style="font-size:0.78rem;opacity:0.75;">GSTIN: {{ company.gstin }}</div>{% endif %}
+          </div>
+          <div class="col-auto text-end">
+            <div style="font-size:1.3rem;font-weight:700;letter-spacing:1px;">TAX INVOICE</div>
+            <div style="font-size:0.85rem;opacity:0.8;">{{ invoice.invoice_no }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta row -->
+      <div class="card-body border-bottom py-2">
+        <div class="row text-center" style="font-size:0.82rem;">
+          <div class="col"><span class="text-muted">Invoice No.</span><br><strong>{{ invoice.invoice_no }}</strong></div>
+          <div class="col"><span class="text-muted">Date</span><br><strong>{{ invoice.date|date:"d-M-Y" }}</strong></div>
+          {% if invoice.order_number %}
+          <div class="col"><span class="text-muted">Order No.</span><br><strong>{{ invoice.order_number }}</strong></div>
+          {% endif %}
+          {% if invoice.place_of_supply %}
+          <div class="col"><span class="text-muted">Place of Supply</span><br><strong>{{ invoice.place_of_supply }}</strong></div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Bill-To -->
+      <div class="card-body border-bottom py-2">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="fw-600 small text-muted mb-1">BILL TO</div>
+            <div class="fw-600">{{ invoice.party.name }}</div>
+            <div class="small text-muted">{{ invoice.party.address }}</div>
+            {% if invoice.party.city %}
+            <div class="small text-muted">{{ invoice.party.city }}{% if invoice.party.state %}, {{ invoice.party.state }}{% endif %}</div>
+            {% endif %}
+            {% if invoice.party.gstin %}
+            <div class="small"><strong>GSTIN:</strong> {{ invoice.party.gstin }}</div>
+            {% endif %}
+            {% if invoice.party.phone %}
+            <div class="small"><strong>Ph:</strong> {{ invoice.party.phone }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Items Table -->
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th style="width:30px;">#</th>
+                <th>Description / HSN</th>
+                <th class="text-end">Qty</th>
+                <th>Unit</th>
+                <th class="text-end">Rate</th>
+                <th class="text-end">Disc</th>
+                <th class="text-end">Taxable</th>
+                <th class="text-end">CGST</th>
+                <th class="text-end">SGST</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>
+                  <div class="fw-500">{{ item.description }}</div>
+                  {% if item.make %}<div class="small text-muted">{{ item.make }}</div>{% endif %}
+                  {% if item.hsn_code %}<div class="small text-muted">HSN: {{ item.hsn_code }}</div>{% endif %}
+                </td>
+                <td class="text-end">{{ item.qty }}</td>
+                <td>{{ item.unit }}</td>
+                <td class="text-end">{{ item.rate }}</td>
+                <td class="text-end">{{ item.discount }}</td>
+                <td class="text-end">{{ item.taxable_value }}</td>
+                <td class="text-end">{{ item.cgst_rate }}%<br><small>{{ item.cgst_amount }}</small></td>
+                <td class="text-end">{{ item.sgst_rate }}%<br><small>{{ item.sgst_amount }}</small></td>
+                <td class="text-end fw-600">{{ item.line_total }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr style="background: #f4f7fc;">
+                <td colspan="6" class="text-end fw-600">Subtotal</td>
+                <td class="text-end fw-600">{{ invoice.subtotal }}</td>
+                <td class="text-end fw-600">{{ invoice.cgst_amount }}</td>
+                <td class="text-end fw-600">{{ invoice.sgst_amount }}</td>
+                <td class="text-end fw-600">—</td>
+              </tr>
+              {% if invoice.round_off %}
+              <tr>
+                <td colspan="9" class="text-end text-muted small">Round Off</td>
+                <td class="text-end small">{{ invoice.round_off }}</td>
+              </tr>
+              {% endif %}
+              <tr style="background: var(--primary); color:#fff;">
+                <td colspan="9" class="text-end fw-700">TOTAL</td>
+                <td class="text-end fw-700" style="font-size:1.05rem;">₹{{ invoice.total_amount }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Amount in words -->
+      <div class="card-body border-top py-2">
+        <small class="text-muted">Amount in words: </small>
+        <strong style="font-size:0.85rem;">{{ amount_words }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right sidebar -->
+  <div class="col-lg-4">
+    <!-- Status Card -->
+    <div class="card mb-3">
+      <div class="card-header">Payment Status</div>
+      <div class="card-body">
+        <div class="mb-3">
+          {% with status=invoice.get_status %}
+          <span class="badge-status badge-{{ status }}">
+            <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i>
+            {{ invoice.get_status_display_label }}
+          </span>
+          {% endwith %}
+        </div>
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted">Invoice Total</span>
+          <strong>{{ invoice.total_amount|currency }}</strong>
+        </div>
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="text-muted">Received</span>
+          <strong class="text-success">{{ invoice.get_total_received|currency }}</strong>
+        </div>
+        <div class="d-flex justify-content-between small border-top pt-2 mt-2">
+          <span class="text-muted fw-600">Outstanding</span>
+          <strong class="{% if outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+            {{ outstanding|currency }}
+          </strong>
+        </div>
+        <a href="{% url 'billing:payment_create' %}?invoice={{ invoice.pk }}" class="btn btn-success w-100 mt-3 btn-sm">
+          <i class="bi bi-cash me-1"></i>Record Payment
+        </a>
+      </div>
+    </div>
+
+    <!-- Payments received -->
+    {% if payments %}
+    <div class="card mb-3">
+      <div class="card-header">Payments Received</div>
+      <div class="card-body p-0">
+        {% for pmt in payments %}
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 {% if not forloop.last %}border-bottom{% endif %}">
+          <div>
+            <div class="fw-500 small">{{ pmt.date|date:"d-M-Y" }}</div>
+            <div class="text-muted small">{{ pmt.mode }}{% if pmt.reference_no %} · {{ pmt.reference_no }}{% endif %}</div>
+          </div>
+          <div class="fw-600 text-success small">{{ pmt.amount|currency }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick links -->
+    <div class="card">
+      <div class="card-header">Quick Links</div>
+      <div class="card-body d-grid gap-2">
+        <a href="{% url 'billing:invoice_edit' invoice.pk %}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-pencil me-1"></i>Edit Invoice
+        </a>
+        <a href="{% url 'billing:invoice_pdf' invoice.pk %}" class="btn btn-dark-navy btn-sm" target="_blank">
+          <i class="bi bi-file-pdf me-1"></i>Download PDF
+        </a>
+        <a href="{% url 'billing:party_detail' invoice.party.pk %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-person me-1"></i>View Party
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

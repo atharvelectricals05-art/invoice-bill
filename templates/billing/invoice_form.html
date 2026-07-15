@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+{% load billing_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+
+{% block topbar_actions %}
+{% if invoice %}
+  <a href="{% url 'billing:invoice_detail' invoice.pk %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-x-circle me-1"></i>Cancel
+  </a>
+{% else %}
+  <a href="{% url 'billing:invoice_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="post" id="invoice-form">
+  {% csrf_token %}
+  {{ formset.management_form }}
+
+  <div class="row g-3">
+    <!-- Left column: Invoice details -->
+    <div class="col-lg-8">
+
+      <!-- Invoice Header Card -->
+      <div class="card mb-3">
+        <div class="card-header">Invoice Details</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Invoice No.</label>
+              {{ form.invoice_no }}
+              {% if form.invoice_no.errors %}<div class="text-danger small">{{ form.invoice_no.errors }}</div>{% endif %}
+              <div class="form-text">Leave blank for auto-generate</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Date *</label>
+              {{ form.date }}
+              {% if form.date.errors %}<div class="text-danger small">{{ form.date.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Place of Supply</label>
+              {{ form.place_of_supply }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Party / Customer *</label>
+              <div class="d-flex gap-2">
+                {{ form.party }}
+                <button type="button" class="btn btn-outline-primary btn-sm flex-shrink-0"
+                        data-bs-toggle="modal" data-bs-target="#addPartyModal" title="Add new party">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </div>
+              {% if form.party.errors %}<div class="text-danger small">{{ form.party.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Order No.</label>
+              {{ form.order_number }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Order Date</label>
+              {{ form.order_date }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Challan No.</label>
+              {{ form.challan_no }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Challan Date</label>
+              {{ form.challan_date }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Line Items Card -->
+      <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-list-ul me-2"></i>Line Items</span>
+          <button type="button" class="btn btn-sm btn-primary" id="add-item-btn">
+            <i class="bi bi-plus me-1"></i>Add Row
+          </button>
+        </div>
+        <div class="card-body">
+          <div id="formset-container">
+            {% for item_form in formset %}
+              {% if not item_form.DELETE.value %}
+              <div class="item-row" data-row-index="{{ forloop.counter0 }}">
+                {{ item_form.id }}
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-5">
+                    <label class="form-label">Description *</label>
+                    {{ item_form.description }}
+                    {% if item_form.description.errors %}<div class="text-danger small">{{ item_form.description.errors }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">HSN Code</label>
+                    {{ item_form.hsn_code }}
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Make</label>
+                    {{ item_form.make }}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Qty *</label>
+                    {{ item_form.qty }}
+                    {% if item_form.qty.errors %}<div class="text-danger small">{{ item_form.qty.errors }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Unit</label>
+                    {{ item_form.unit }}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Rate *</label>
+                    {{ item_form.rate }}
+                    {% if item_form.rate.errors %}<div class="text-danger small">{{ item_form.rate.errors }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Discount</label>
+                    {{ item_form.discount }}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">CGST %</label>
+                    {{ item_form.cgst_rate }}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">SGST %</label>
+                    {{ item_form.sgst_rate }}
+                  </div>
+                  <div class="col-md-12">
+                    <div class="d-flex justify-content-between align-items-center mt-1" style="font-size:0.8rem;color:var(--text-muted);">
+                      <span>Taxable: <strong class="taxable-value text-dark">0.00</strong>
+                            &nbsp;|&nbsp; CGST: <strong class="cgst-val text-dark">0.00</strong>
+                            &nbsp;|&nbsp; SGST: <strong class="sgst-val text-dark">0.00</strong>
+                            &nbsp;|&nbsp; Line Total: <strong class="line-total-val text-primary">0.00</strong>
+                      </span>
+                      <button type="button" class="remove-item-btn" title="Remove row">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <!-- Empty row template (hidden) -->
+          <template id="empty-form-template">
+            <div class="item-row" data-row-index="__prefix__">
+              <input type="hidden" name="items-__prefix__-id" id="id_items-__prefix__-id">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                  <label class="form-label">Description *</label>
+                  <input type="text" name="items-__prefix__-description" id="id_items-__prefix__-description" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">HSN Code</label>
+                  <input type="text" name="items-__prefix__-hsn_code" id="id_items-__prefix__-hsn_code" class="form-control">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Make</label>
+                  <input type="text" name="items-__prefix__-make" id="id_items-__prefix__-make" class="form-control">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Qty *</label>
+                  <input type="number" name="items-__prefix__-qty" id="id_items-__prefix__-qty" class="form-control qty-input" step="0.001" required>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Unit</label>
+                  <select name="items-__prefix__-unit" id="id_items-__prefix__-unit" class="form-select">
+                    <option value="NOS">NOS</option>
+                    <option value="PCS">PCS</option>
+                    <option value="MTR">MTR</option>
+                    <option value="KG">KG</option>
+                    <option value="BOX">BOX</option>
+                    <option value="SET">SET</option>
+                    <option value="RFT">RFT</option>
+                    <option value="PKT">PKT</option>
+                    <option value="OTH">Other</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Rate *</label>
+                  <input type="number" name="items-__prefix__-rate" id="id_items-__prefix__-rate" class="form-control rate-input" step="0.01" required>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Discount</label>
+                  <input type="number" name="items-__prefix__-discount" id="id_items-__prefix__-discount" class="form-control disc-input" step="0.01" value="0">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">CGST %</label>
+                  <input type="number" name="items-__prefix__-cgst_rate" id="id_items-__prefix__-cgst_rate" class="form-control cgst-rate-input" step="0.01" value="9">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">SGST %</label>
+                  <input type="number" name="items-__prefix__-sgst_rate" id="id_items-__prefix__-sgst_rate" class="form-control sgst-rate-input" step="0.01" value="9">
+                </div>
+                <div class="col-md-12">
+                  <div class="d-flex justify-content-between align-items-center mt-1" style="font-size:0.8rem;color:var(--text-muted);">
+                    <span>Taxable: <strong class="taxable-value text-dark">0.00</strong>
+                          &nbsp;|&nbsp; CGST: <strong class="cgst-val text-dark">0.00</strong>
+                          &nbsp;|&nbsp; SGST: <strong class="sgst-val text-dark">0.00</strong>
+                          &nbsp;|&nbsp; Line Total: <strong class="line-total-val text-primary">0.00</strong>
+                    </span>
+                    <button type="button" class="remove-item-btn" title="Remove row">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right column: Totals -->
+    <div class="col-lg-4">
+      <div class="totals-card mb-3" id="totals-display">
+        <div class="fw-600 mb-3" style="font-size:0.9rem;opacity:0.8;text-transform:uppercase;letter-spacing:0.5px;">
+          Invoice Totals
+        </div>
+        <div class="tot-row">
+          <span>Subtotal (Taxable)</span>
+          <span id="tot-subtotal">0.00</span>
+        </div>
+        <div class="tot-row">
+          <span>CGST</span>
+          <span id="tot-cgst">0.00</span>
+        </div>
+        <div class="tot-row">
+          <span>SGST</span>
+          <span id="tot-sgst">0.00</span>
+        </div>
+        <div class="tot-row">
+          <span>Round Off</span>
+          <span id="tot-roundoff">0.00</span>
+        </div>
+        <div class="tot-row">
+          <span>Invoice Total</span>
+          <span id="tot-total">0.00</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <button type="submit" class="btn btn-primary w-100 mb-2" id="save-invoice-btn">
+            <i class="bi bi-check-circle me-1"></i>
+            {% if invoice %}Update Invoice{% else %}Create Invoice{% endif %}
+          </button>
+          {% if invoice %}
+          <a href="{% url 'billing:invoice_detail' invoice.pk %}" class="btn btn-outline-secondary w-100">
+            Cancel
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- Add Party Modal -->
+<div class="modal fade" id="addPartyModal" tabindex="-1" aria-labelledby="addPartyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addPartyModalLabel"><i class="bi bi-person-plus me-2"></i>Add New Party</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3" id="new-party-form">
+          <div class="col-md-6">
+            <label class="form-label">Name *</label>
+            <input type="text" id="np-name" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">GSTIN</label>
+            <input type="text" id="np-gstin" class="form-control">
+          </div>
+          <div class="col-md-12">
+            <label class="form-label">Address</label>
+            <textarea id="np-address" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">City</label>
+            <input type="text" id="np-city" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">State</label>
+            <input type="text" id="np-state" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Phone</label>
+            <input type="text" id="np-phone" class="form-control">
+          </div>
+        </div>
+        <div id="party-save-error" class="text-danger small mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-party-btn">
+          <i class="bi bi-check me-1"></i>Save Party
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Inline formset management ─────────────────────────────────────────────────
+let formIndex = {{ formset.total_form_count }};
+
+document.getElementById('add-item-btn').addEventListener('click', function () {
+  const template = document.getElementById('empty-form-template');
+  const html = template.innerHTML.replace(/__prefix__/g, formIndex);
+  const container = document.getElementById('formset-container');
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const newRow = tmp.firstElementChild;
+  container.appendChild(newRow);
+  attachRowListeners(newRow);
+  // Update management form
+  document.querySelector('[name="items-TOTAL_FORMS"]').value = ++formIndex;
+  recalcTotals();
+});
+
+// Attach listeners to existing rows on page load
+document.querySelectorAll('.item-row').forEach(row => {
+  attachRowListeners(row);
+  recalcRow(row);
+});
+recalcTotals();
+
+// For new invoices (no existing rows), auto-add first row
+{% if not invoice %}
+if (document.querySelectorAll('.item-row').length === 0) {
+  document.getElementById('add-item-btn').click();
+}
+{% endif %}
+
+function attachRowListeners(row) {
+  row.querySelectorAll('input[type="number"]').forEach(inp => {
+    inp.addEventListener('input', () => { recalcRow(row); recalcTotals(); });
+  });
+  const removeBtn = row.querySelector('.remove-item-btn');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => removeRow(row));
+  }
+}
+
+function removeRow(row) {
+  // If it has a Django id, mark for deletion
+  const idInput = row.querySelector('input[name$="-id"]');
+  if (idInput && idInput.value) {
+    // Find or create DELETE input
+    let delInput = row.querySelector('input[name$="-DELETE"]');
+    if (!delInput) {
+      delInput = document.createElement('input');
+      delInput.type = 'hidden';
+      delInput.name = idInput.name.replace('-id', '-DELETE');
+      row.appendChild(delInput);
+    }
+    delInput.value = 'on';
+    row.style.display = 'none';
+  } else {
+    row.remove();
+  }
+  recalcTotals();
+}
+
+function parseNum(val) { return parseFloat(val) || 0; }
+
+function recalcRow(row) {
+  const qty = parseNum(row.querySelector('.qty-input')?.value);
+  const rate = parseNum(row.querySelector('.rate-input')?.value);
+  const disc = parseNum(row.querySelector('.disc-input')?.value);
+  const cgstRate = parseNum(row.querySelector('.cgst-rate-input')?.value);
+  const sgstRate = parseNum(row.querySelector('.sgst-rate-input')?.value);
+
+  const taxable = qty * rate - disc;
+  const cgst = taxable * cgstRate / 100;
+  const sgst = taxable * sgstRate / 100;
+  const lineTotal = taxable + cgst + sgst;
+
+  const setVal = (cls, val) => {
+    const el = row.querySelector(cls);
+    if (el) el.textContent = val.toFixed(2);
+  };
+  setVal('.taxable-value', taxable);
+  setVal('.cgst-val', cgst);
+  setVal('.sgst-val', sgst);
+  setVal('.line-total-val', lineTotal);
+}
+
+function recalcTotals() {
+  let subtotal = 0, cgst = 0, sgst = 0;
+  document.querySelectorAll('#formset-container .item-row').forEach(row => {
+    if (row.style.display === 'none') return;
+    subtotal += parseFloat(row.querySelector('.taxable-value')?.textContent || 0);
+    cgst     += parseFloat(row.querySelector('.cgst-val')?.textContent || 0);
+    sgst     += parseFloat(row.querySelector('.sgst-val')?.textContent || 0);
+  });
+  const raw = subtotal + cgst + sgst;
+  const rounded = Math.round(raw);
+  const roundOff = rounded - raw;
+
+  document.getElementById('tot-subtotal').textContent  = subtotal.toFixed(2);
+  document.getElementById('tot-cgst').textContent      = cgst.toFixed(2);
+  document.getElementById('tot-sgst').textContent      = sgst.toFixed(2);
+  document.getElementById('tot-roundoff').textContent  = roundOff.toFixed(2);
+  document.getElementById('tot-total').textContent     = rounded.toFixed(2);
+}
+
+// ── Quick Add Party via AJAX ──────────────────────────────────────────────────
+document.getElementById('save-party-btn').addEventListener('click', async function () {
+  const name = document.getElementById('np-name').value.trim();
+  const errEl = document.getElementById('party-save-error');
+  if (!name) {
+    errEl.textContent = 'Name is required.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+  errEl.classList.add('d-none');
+
+  const data = new FormData();
+  data.append('name', name);
+  data.append('gstin', document.getElementById('np-gstin').value);
+  data.append('address', document.getElementById('np-address').value);
+  data.append('city', document.getElementById('np-city').value);
+  data.append('state', document.getElementById('np-state').value);
+  data.append('phone', document.getElementById('np-phone').value);
+  data.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  const btn = this;
+  btn.disabled = true;
+  try {
+    const resp = await fetch('{% url "billing:party_create" %}', {
+      method: 'POST', body: data,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
+    if (resp.ok) {
+      const party = await resp.json();
+      const sel = document.getElementById('id_party');
+      const opt = new Option(party.name, party.id, true, true);
+      sel.appendChild(opt);
+      bootstrap.Modal.getInstance(document.getElementById('addPartyModal')).hide();
+    } else {
+      errEl.textContent = 'Failed to save party. Please try again.';
+      errEl.classList.remove('d-none');
+    }
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

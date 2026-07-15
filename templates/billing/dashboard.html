@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% load billing_tags %}
+
+{% block title %}Dashboard{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+
+{% block topbar_actions %}
+<form method="get" class="d-flex align-items-center gap-2" id="dashboard-filter-form">
+  {{ filter_form.date_from }}
+  <span class="text-muted small">to</span>
+  {{ filter_form.date_to }}
+  <button type="submit" class="btn btn-primary btn-sm">
+    <i class="bi bi-funnel"></i> Filter
+  </button>
+  <a href="{% url 'billing:dashboard' %}" class="btn btn-outline-secondary btn-sm">Reset</a>
+</form>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Summary Cards ── -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:#e0eaff;">
+        <i class="bi bi-receipt" style="color:var(--accent);"></i>
+      </div>
+      <div>
+        <div class="stat-label">Total Invoiced</div>
+        <div class="stat-value">{{ total_invoiced|currency }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:#d1fae5;">
+        <i class="bi bi-cash-coin" style="color:#059669;"></i>
+      </div>
+      <div>
+        <div class="stat-label">Total Received</div>
+        <div class="stat-value" style="color:#059669;">{{ total_received|currency }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:#fee2e2;">
+        <i class="bi bi-hourglass-split" style="color:#dc2626;"></i>
+      </div>
+      <div>
+        <div class="stat-label">Outstanding</div>
+        <div class="stat-value" style="color:#dc2626;">{{ total_outstanding|currency }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="icon-wrap" style="background:#fef3c7;">
+        <i class="bi bi-percent" style="color:#d97706;"></i>
+      </div>
+      <div>
+        <div class="stat-label">Tax Collected</div>
+        <div class="stat-value" style="color:#d97706;">{{ total_tax|currency }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Charts Row ── -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-graph-up me-2"></i>Monthly Invoiced vs Received</span>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-bar-chart me-2"></i>Top 10 Parties by Invoiced Amount
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="topPartiesChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Party Outstanding Table ── -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-people me-2"></i>Party-wise Outstanding Balances</span>
+    <a href="{% url 'billing:party_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+  </div>
+  <div class="card-body p-0">
+    {% if party_balances %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Party</th>
+            <th class="text-end">Total Invoiced</th>
+            <th class="text-end">Received</th>
+            <th class="text-end">Outstanding</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in party_balances %}
+          <tr>
+            <td>
+              <a href="{% url 'billing:party_detail' row.party.pk %}" class="text-decoration-none fw-500">
+                {{ row.party.name }}
+              </a>
+              {% if row.party.city %}<small class="text-muted d-block">{{ row.party.city }}</small>{% endif %}
+            </td>
+            <td class="text-end">{{ row.total_invoiced|currency }}</td>
+            <td class="text-end text-success">{{ row.total_received|currency }}</td>
+            <td class="text-end">
+              <span class="fw-600 {% if row.outstanding > 0 %}text-danger{% else %}text-success{% endif %}">
+                {{ row.outstanding|currency }}
+              </span>
+            </td>
+            <td class="text-end">
+              <a href="{% url 'billing:party_detail' row.party.pk %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox display-4 d-block mb-2"></i>
+        No outstanding balances.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+const monthlyLabels   = {{ monthly_labels|safe }};
+const monthlyInvoiced = {{ monthly_invoiced|safe }};
+const monthlyReceived = {{ monthly_received|safe }};
+const topLabels       = {{ top_party_labels|safe }};
+const topData         = {{ top_party_data|safe }};
+
+// Monthly Line Chart
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'line',
+  data: {
+    labels: monthlyLabels,
+    datasets: [
+      {
+        label: 'Invoiced',
+        data: monthlyInvoiced,
+        borderColor: '#1e6fd9',
+        backgroundColor: 'rgba(30,111,217,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#1e6fd9',
+        pointRadius: 4,
+      },
+      {
+        label: 'Received',
+        data: monthlyReceived,
+        borderColor: '#059669',
+        backgroundColor: 'rgba(5,150,105,0.06)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#059669',
+        pointRadius: 4,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: v => '₹' + (v >= 100000 ? (v/100000).toFixed(1) + 'L' : v.toLocaleString('en-IN')),
+        },
+        grid: { color: 'rgba(0,0,0,0.05)' },
+      },
+      x: { grid: { display: false } },
+    },
+  },
+});
+
+// Top Parties Bar Chart
+new Chart(document.getElementById('topPartiesChart'), {
+  type: 'bar',
+  data: {
+    labels: topLabels,
+    datasets: [{
+      label: 'Invoiced Amount',
+      data: topData,
+      backgroundColor: 'rgba(30,111,217,0.75)',
+      borderRadius: 4,
+    }],
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        beginAtZero: true,
+        ticks: { callback: v => '₹' + (v >= 100000 ? (v/100000).toFixed(1) + 'L' : v.toLocaleString('en-IN')) },
+        grid: { color: 'rgba(0,0,0,0.05)' },
+      },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+    },
+  },
+});
+</script>
+{% endblock %}

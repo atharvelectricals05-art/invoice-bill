@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tax Invoice - {{ invoice.invoice_no }}</title>
+<style>
+@page {
+    size: A4 portrait;
+    margin: 5mm 6mm 5mm 6mm;
+}
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 8pt;
+    color: #000;
+    margin: 0;
+    padding: 0;
+}
+
+/* ── shared ── */
+.b   { font-weight: bold; }
+.sm  { font-size: 7pt; }
+.xs  { font-size: 6.5pt; }
+
+/* section tables — each is a separate table with border */
+table.sec {
+    width: 100%;
+    border-collapse: collapse;
+    border-left: 1.5pt solid #000;
+    border-right: 1.5pt solid #000;
+}
+table.sec td {
+    padding: 2pt 4pt;
+    vertical-align: top;
+    font-size: 8pt;
+}
+
+/* first section gets top border */
+table.first { border-top: 1.5pt solid #000; }
+
+/* last section gets bottom border */
+table.last { border-bottom: 1.5pt solid #000; }
+
+/* section separator */
+table.sec td.sep { border-bottom: 1pt solid #000; }
+table.sec td.sep2 { border-bottom: 1.5pt solid #000; }
+
+/* right border on cells */
+table.sec td.rb { border-right: 1pt solid #000; }
+table.sec td.bb { border-bottom: 1pt solid #000; }
+
+/* items table */
+table.itm {
+    width: 100%;
+    border-collapse: collapse;
+    border-left: 1.5pt solid #000;
+    border-right: 1.5pt solid #000;
+}
+table.itm th {
+    border: 1pt solid #000;
+    padding: 0;
+    font-size: 7pt;
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+}
+table.itm td {
+    border: 1pt solid #000;
+    padding: 0;
+    font-size: 7.5pt;
+    text-align: center;
+    vertical-align: top;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 1: HEADER
+═══════════════════════════════════════════════════════════ -->
+<table class="sec first" cellspacing="0">
+<tr>
+  <td style="text-align:center; padding:5pt; border-bottom:1.5pt solid #000;">
+    <div style="font-size:14pt; font-weight:bold;">{{ company.name|upper }}</div>
+    {% if company.formerly_known_as %}
+    <div style="font-size:7.5pt; font-style:italic;">(Formerly known as "{{ company.formerly_known_as }}")</div>
+    {% endif %}
+    <div style="font-size:7.5pt;">{{ company.address }}</div>
+    <div style="font-size:7.5pt;">
+      {% if company.phone %}Ph.: {{ company.phone }}{% endif %}
+      {% if company.email %} , Mob. E.mail.:{{ company.email }}{% endif %}
+    </div>
+    <span style="background:#cc0000; color:#fff; font-size:7pt; font-weight:bold; padding:1pt 6pt;">E-Invoice</span>
+  </td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 2: GSTIN | TAX INVOICE | ORIGINAL
+═══════════════════════════════════════════════════════════ -->
+<table class="sec" cellspacing="0">
+<tr>
+  <td class="rb bb" style="width:38%;">
+    GSTIN Number: <span class="b">{{ company.gstin|default:"—" }}</span>
+  </td>
+  <td class="rb bb" style="width:30%; text-align:center; font-size:12pt; font-weight:bold;">
+    Tax Invoice
+  </td>
+  <td class="bb" style="width:32%; text-align:right; font-weight:bold;">
+    ORIGINAL FOR RECIPIENT
+  </td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 3: META ROWS (PAN, Invoice, Date, Order, Challan)
+═══════════════════════════════════════════════════════════ -->
+<table class="sec" cellspacing="0">
+<tr>
+  <td class="rb bb" style="width:25%;">PAN No: <span class="b">{{ company.pan|default:"—" }}</span></td>
+  <td class="rb bb" style="width:25%;">Order Number: <span class="b">{{ invoice.order_number|default:"" }}</span></td>
+  <td class="rb bb" style="width:25%;">Challan Date: <span class="b">{{ invoice.challan_date|date:"d/m/Y"|default:"" }}</span></td>
+  <td class="bb" style="width:25%;">Challan No: <span class="b">{{ invoice.challan_no|default:"" }}</span></td>
+</tr>
+<tr>
+  <td class="rb bb">Invoice No: <span class="b">{{ invoice.invoice_no }}</span></td>
+  <td class="rb bb">Order Date: <span class="b">{{ invoice.order_date|date:"d/m/Y"|default:"" }}</span></td>
+  <td colspan="2" class="bb">Place of Supply: <span class="b">{{ invoice.place_of_supply|default:"—" }}</span></td>
+</tr>
+<tr>
+  <td colspan="4" class="bb">Date: <span class="b">{{ invoice.date|date:"d/m/Y" }}</span></td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 4: BILL TO | SHIP TO
+═══════════════════════════════════════════════════════════ -->
+<table class="sec" cellspacing="0">
+<tr>
+  <td class="rb bb" style="width:50%; padding:3pt 5pt;">
+    <div class="sm" style="text-decoration:underline;">Receiver (Bill to):</div>
+    <div style="font-size:10pt; font-weight:bold; margin:2pt 0;">{{ invoice.party.name|upper }}</div>
+    <div>{{ invoice.party.address }}</div>
+    {% if invoice.party.city %}<div>{{ invoice.party.city }} {{ invoice.party.state }}</div>{% endif %}
+    <div>Contact Person : {{ invoice.party.contact_person|default:"" }}</div>
+    {% if invoice.party.gstin %}<div>GSTIN ID:{{ invoice.party.gstin }}</div>{% endif %}
+    {% if invoice.party.state_code %}<div><br>State Code:{{ invoice.party.state_code }}</div>{% endif %}
+  </td>
+  <td class="bb" style="width:50%; padding:3pt 5pt;">
+    <div class="sm" style="text-decoration:underline;">Consignee (Ship to):</div>
+    <div style="font-size:10pt; font-weight:bold; margin:2pt 0;">{{ invoice.party.name|upper }}</div>
+    <div>{{ invoice.party.address }}</div>
+    {% if invoice.party.city %}<div>{{ invoice.party.city }} {{ invoice.party.state }}</div>{% endif %}
+    <div>Contact Person : {{ invoice.party.contact_person|default:"" }}</div>
+    {% if invoice.party.gstin %}<div>GSTIN ID:{{ invoice.party.gstin }}</div>{% endif %}
+    {% if invoice.party.state_code %}<div><br>State Code:{{ invoice.party.state_code }}</div>{% endif %}
+  </td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 5: ITEMS TABLE (separate table, own column widths)
+═══════════════════════════════════════════════════════════ -->
+<table class="itm" cellspacing="0" cellpadding="1">
+<!-- HEADER -->
+<tr>
+  <th width="10mm">Sr</th>
+  <th width="76mm" style="text-align:left;">HSN - Description of Goods/Services</th>
+  <th width="14mm">Qty</th>
+  <th width="10mm">Unit</th>
+  <th width="16mm">Rate</th>
+  <th width="20mm">Taxable Value</th>
+  <th width="16mm">CGST Amt</th>
+  <th width="16mm">SGST Amt</th>
+  <th width="20mm">Total Amt</th>
+</tr>
+<!-- DATA -->
+{% for item in items %}
+<tr>
+  <td>{{ forloop.counter }}</td>
+  <td style="text-align:left; font-size:7pt;">
+    {% if item.hsn_code %}<b>{{ item.hsn_code }}</b> - {% endif %}{{ item.description }}{% if item.make %}<br>MAKE - {{ item.make }}{% endif %}
+  </td>
+  <td style="text-align:right;">{{ item.qty }}</td>
+  <td>{{ item.unit }}</td>
+  <td style="text-align:right;">{{ item.rate }}</td>
+  <td style="text-align:right;">{{ item.taxable_value }}</td>
+  <td style="text-align:right;">{{ item.cgst_amount }}</td>
+  <td style="text-align:right;">{{ item.sgst_amount }}</td>
+  <td style="text-align:right; font-weight:bold;">{{ item.line_total }}</td>
+</tr>
+{% endfor %}
+<!-- FILLER -->
+{% for i in filler_rows %}
+<tr>
+  <td style="height:14pt;">&nbsp;</td>
+  <td></td><td></td><td></td><td></td>
+  <td></td><td></td><td></td><td></td>
+</tr>
+{% endfor %}
+<!-- TOTALS -->
+<tr>
+  <td style="border-top:2pt solid #000;"></td>
+  <td style="border-top:2pt solid #000;"></td>
+  <td style="border-top:2pt solid #000; text-align:right; font-weight:bold;">{{ total_qty }}</td>
+  <td style="border-top:2pt solid #000;"></td>
+  <td style="border-top:2pt solid #000;"></td>
+  <td style="border-top:2pt solid #000; text-align:right; font-weight:bold;">{{ invoice.subtotal }}</td>
+  <td style="border-top:2pt solid #000; text-align:right; font-weight:bold;">{{ invoice.cgst_amount }}</td>
+  <td style="border-top:2pt solid #000; text-align:right; font-weight:bold;">{{ invoice.sgst_amount }}</td>
+  <td style="border-top:2pt solid #000; text-align:right; font-weight:bold;">{{ invoice.total_amount }}</td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 6: BANK DETAILS | TAX SUMMARY | SIGNATORY
+═══════════════════════════════════════════════════════════ -->
+<table class="sec" cellspacing="0">
+<tr>
+  <td class="rb bb" style="width:50%; padding:4pt 5pt;">
+    <span class="b" style="text-decoration:underline;">Bank Details :</span>
+    &nbsp;<span class="b">BANK NAME : {{ company.bank_name|default:"" }}</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    Branch Name: <span class="b">{{ company.bank_branch|default:"" }}</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    A/C No. &nbsp;&nbsp;: <span class="b">{{ company.bank_account_no|default:"" }}</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    NEFT/RTGS : <span class="b">{{ company.neft_ifsc|default:"" }}</span><br>
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    IRN NO.:
+  </td>
+  <td class="rb bb" style="width:25%; padding:4pt 5pt;">
+    Taxable : &nbsp;&nbsp;{{ invoice.subtotal }}<br>
+    CGST : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ invoice.cgst_amount }}<br>
+    SGST : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ invoice.sgst_amount }}<br>
+    Round Off &nbsp;{{ invoice.round_off }}<br>
+    <br>
+    <span class="b">Invoice Amt: {{ invoice.total_amount }}</span>
+  </td>
+  <td class="bb" style="width:25%; padding:4pt 5pt; text-align:center;">
+    for {{ company.name }}<br>
+    <span class="b">Authorised Signatory</span>
+  </td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 7: AMOUNT IN WORDS
+═══════════════════════════════════════════════════════════ -->
+<table class="sec" cellspacing="0">
+<tr>
+  <td class="bb" style="padding:3pt 5pt;">
+    <span class="b">INR</span> {{ amount_words }}
+  </td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 8: MSME | DECLARATION
+═══════════════════════════════════════════════════════════ -->
+<table class="sec" cellspacing="0">
+<tr>
+  <td class="rb bb" style="width:45%; padding:4pt 8pt; text-align:center;">
+    <span class="b">{% if company.msme_no %}MSME No.: {{ company.msme_no }}{% else %}&nbsp;{% endif %}</span>
+  </td>
+  <td class="bb" style="width:55%; padding:4pt 5pt; font-size:7.5pt; font-style:italic;">
+    We declare that this invoice shows the actual price of the goods described
+    and that all particulars are true and correct.<br><br>
+    <span style="font-style:normal;">for {{ company.name|upper }}</span>
+  </td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 9: TERMS
+═══════════════════════════════════════════════════════════ -->
+<table class="sec" cellspacing="0">
+<tr>
+  <td class="bb" style="padding:3pt 5pt; font-size:6.5pt; line-height:1.5;">
+    1) Goods once sold will not be Taken Back or exchanged.
+    &nbsp;&nbsp;2) Interest @ 24% p.a. will be charged on the amount of bill as per terms of Bill.
+    &nbsp;&nbsp;3) Payment should be made of this bill only by A/c.payee cheque or DD.
+    &nbsp;&nbsp;4) Subject to local Jurisdiction Only.
+    &nbsp;&nbsp;5) Goods once sold are non-returnable and non-refundable.
+  </td>
+</tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SECTION 10: FOOTER SIGNATORY
+═══════════════════════════════════════════════════════════ -->
+<table class="sec last" cellspacing="0">
+<tr>
+  <td style="width:55%; height:40pt; padding:4pt 5pt;">&nbsp;</td>
+  <td style="width:45%; height:40pt; padding:4pt 5pt; text-align:center; font-weight:bold; vertical-align:bottom;">
+    for {{ company.name|upper }}<br><br>
+    <span style="font-weight:normal; font-style:italic;">Authorised Signatory</span>
+  </td>
+</tr>
+</table>
+
+</body>
+</html>
