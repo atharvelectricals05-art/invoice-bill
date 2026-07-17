@@ -15,57 +15,14 @@
   <!-- Custom CSS -->
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/atharva.css' %}">
-  <style>
-  /* ── Mobile sidebar overlay ── */
-  .sidebar-overlay {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 999;
-  }
-  .sidebar-overlay.active { display: block; }
-
-  /* ── Hamburger button ── */
-  .topbar-hamburger {
-    display: none;
-    background: none;
-    border: none;
-    color: inherit;
-    font-size: 1.3rem;
-    padding: 0 8px 0 0;
-    cursor: pointer;
-    line-height: 1;
-  }
-
-  @media (max-width: 768px) {
-    .sidebar {
-      transform: translateX(-100%);
-      transition: transform 0.25s ease;
-      z-index: 1000;
-    }
-    .sidebar.open {
-      transform: translateX(0);
-    }
-    .main-wrapper {
-      margin-left: 0 !important;
-    }
-    .topbar-hamburger {
-      display: inline-flex;
-      align-items: center;
-    }
-    /* Make invoice form full-width on mobile */
-    .col-lg-8, .col-lg-4 {
-      width: 100% !important;
-    }
-    /* Tighten table overflow on mobile */
-    .table-responsive { overflow-x: auto; }
-    /* Topbar title smaller on mobile */
-    .topbar-title { font-size: 0.95rem; }
-  }
-  </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
+
+<!-- Instant feedback on navigation/submit, since Render+Supabase round-trips
+     still take a beat even after the query fixes — this stops clicks from
+     feeling like they did nothing. -->
+<div id="page-progress"></div>
 
 {% if user.is_authenticated %}
 <!-- Sidebar overlay for mobile -->
@@ -197,6 +154,61 @@ sidebar.querySelectorAll('.nav-link').forEach(link => {
 });
 </script>
 {% endif %}
+
+<script>
+// ── Top progress bar + button loading state ──────────────────
+// Gives instant visual feedback on click/submit so a page that takes a
+// second or two to load over the network doesn't feel like a dead click.
+(function () {
+  const bar = document.getElementById('page-progress');
+  let started = false;
+
+  function startProgress() {
+    if (started) return;
+    started = true;
+    bar.classList.remove('finishing');
+    bar.classList.add('active');
+    bar.style.width = '0%';
+    requestAnimationFrame(() => { bar.style.width = '75%'; });
+  }
+
+  // Any same-tab, same-origin link click starts the bar immediately.
+  document.addEventListener('click', function (e) {
+    const link = e.target.closest('a[href]');
+    if (!link || link.target === '_blank') return;
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+    const href = link.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+    if (link.origin && link.origin !== window.location.origin) return;
+    startProgress();
+  });
+
+  // Any form submit starts the bar and locks its submit button so a slow
+  // network can't be double/triple-clicked into duplicate invoices/payments.
+  document.querySelectorAll('form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      if (form.dataset.noProgress) return;
+      startProgress();
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn && !btn.disabled) {
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Please wait…';
+        btn.disabled = true;
+      }
+    });
+  });
+
+  window.addEventListener('pageshow', function () {
+    // Restores button state if the page was served from bfcache on back-nav.
+    started = false;
+    bar.classList.remove('active');
+    document.querySelectorAll('button[data-original-html]').forEach(function (btn) {
+      btn.innerHTML = btn.dataset.originalHtml;
+      btn.disabled = false;
+    });
+  });
+})();
+</script>
 
 {% block extra_scripts %}{% endblock %}
 </body>

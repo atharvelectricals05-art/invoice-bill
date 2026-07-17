@@ -45,7 +45,7 @@
   <div class="card-body p-0">
     {% if invoice_rows %}
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table class="table table-hover table-stack mb-0">
         <thead>
           <tr>
             <th>Invoice No.</th>
@@ -60,29 +60,29 @@
         <tbody>
           {% for row in invoice_rows %}
           <tr>
-            <td>
+            <td data-label="Invoice No.">
               <a href="{% url 'billing:invoice_detail' row.invoice.pk %}" class="fw-600 text-decoration-none" style="color:var(--primary);">
                 {{ row.invoice.invoice_no }}
               </a>
             </td>
-            <td class="text-nowrap">{{ row.invoice.date|date:"d-M-Y" }}</td>
-            <td>
+            <td class="text-nowrap" data-label="Date">{{ row.invoice.date|date:"d-M-Y" }}</td>
+            <td data-label="Party">
               <a href="{% url 'billing:party_detail' row.invoice.party.pk %}" class="text-decoration-none">
                 {{ row.invoice.party.name }}
               </a>
             </td>
-            <td class="text-end fw-500">{{ row.invoice.total_amount|currency }}</td>
-            <td class="text-end">
+            <td class="text-end fw-500" data-label="Total">{{ row.invoice.total_amount|currency }}</td>
+            <td class="text-end" data-label="Outstanding">
               <span class="{% if row.outstanding > 0 %}text-danger fw-600{% else %}text-success{% endif %}">
                 {{ row.outstanding|currency }}
               </span>
             </td>
-            <td class="text-center">
+            <td class="text-center" data-label="Status">
               <span class="badge-status badge-{{ row.status }}">
-                {{ row.invoice.get_status_display_label }}
+                {{ row.status|capfirst }}
               </span>
             </td>
-            <td class="text-center text-nowrap">
+            <td class="text-center text-nowrap stack-action" data-label="">
               <a href="{% url 'billing:invoice_detail' row.invoice.pk %}" class="btn btn-sm btn-outline-secondary me-1" title="View">
                 <i class="bi bi-eye"></i>
               </a>

@@ -1,6 +1,15 @@
+from decimal import Decimal
+
 from django import forms
+from django.db.models import Sum, DecimalField
+from django.db.models.functions import Coalesce
 from django.forms import inlineformset_factory
 from .models import Invoice, InvoiceItem, Payment, Party, CompanyProfile
+
+# Lets templates show `inv.total_amount - inv.total_received` without each
+# invoice in a dropdown re-querying its payments (was N+1 on every invoice
+# in the system when rendering the payment form).
+_WITH_RECEIVED = Coalesce(Sum('payments__amount'), Decimal('0'), output_field=DecimalField())
 
 
 class PartyForm(forms.ModelForm):
@@ -95,11 +104,13 @@ class PaymentForm(forms.ModelForm):
         party_id = kwargs.pop('party_id', None)
         super().__init__(*args, **kwargs)
         self.fields['party'].queryset = Party.objects.order_by('name')
-        self.fields['invoice'].queryset = Invoice.objects.order_by('-date')
+        self.fields['invoice'].queryset = Invoice.objects.annotate(total_received=_WITH_RECEIVED).order_by('-date')
         self.fields['invoice'].required = False
         if party_id:
             self.fields['party'].initial = party_id
-            self.fields['invoice'].queryset = Invoice.objects.filter(party_id=party_id).order_by('-date')
+            self.fields['invoice'].queryset = Invoice.objects.filter(
+                party_id=party_id
+            ).annotate(total_received=_WITH_RECEIVED).order_by('-date')
         for field in self.fields.values():
             if isinstance(field.widget, forms.Select):
                 field.widget.attrs['class'] = 'form-select'

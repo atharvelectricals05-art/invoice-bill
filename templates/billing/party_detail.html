@@ -88,12 +88,12 @@
 <div class="card mb-3">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span><i class="bi bi-receipt me-2"></i>Invoice History</span>
-    <span class="badge bg-secondary">{{ invoices.count }} invoices</span>
+    <span class="badge bg-secondary">{{ invoice_rows|length }} invoices</span>
   </div>
   <div class="card-body p-0">
-    {% if invoices %}
+    {% if invoice_rows %}
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table class="table table-hover table-stack mb-0">
         <thead>
           <tr>
             <th>Invoice No.</th>
@@ -105,29 +105,27 @@
           </tr>
         </thead>
         <tbody>
-          {% for inv in invoices %}
-          {% with outstanding_inv=inv.get_outstanding %}
+          {% for row in invoice_rows %}
           <tr>
-            <td>
-              <a href="{% url 'billing:invoice_detail' inv.pk %}" class="fw-600 text-decoration-none" style="color:var(--primary);">
-                {{ inv.invoice_no }}
+            <td data-label="Invoice No.">
+              <a href="{% url 'billing:invoice_detail' row.invoice.pk %}" class="fw-600 text-decoration-none" style="color:var(--primary);">
+                {{ row.invoice.invoice_no }}
               </a>
             </td>
-            <td>{{ inv.date|date:"d-M-Y" }}</td>
-            <td class="text-end">{{ inv.total_amount|currency }}</td>
-            <td class="text-end {% if outstanding_inv > 0 %}text-danger fw-600{% else %}text-success{% endif %}">
-              {{ outstanding_inv|currency }}
+            <td data-label="Date">{{ row.invoice.date|date:"d-M-Y" }}</td>
+            <td class="text-end" data-label="Total">{{ row.invoice.total_amount|currency }}</td>
+            <td class="text-end {% if row.outstanding > 0 %}text-danger fw-600{% else %}text-success{% endif %}" data-label="Outstanding">
+              {{ row.outstanding|currency }}
             </td>
-            <td class="text-center">
-              <span class="badge-status badge-{{ inv.get_status }}">{{ inv.get_status_display_label }}</span>
+            <td class="text-center" data-label="Status">
+              <span class="badge-status badge-{{ row.status }}">{{ row.status|capfirst }}</span>
             </td>
-            <td>
-              <a href="{% url 'billing:invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-secondary">
+            <td class="stack-action" data-label="">
+              <a href="{% url 'billing:invoice_detail' row.invoice.pk %}" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-eye"></i>
               </a>
             </td>
           </tr>
-          {% endwith %}
           {% endfor %}
         </tbody>
       </table>
@@ -147,7 +145,7 @@
   <div class="card-body p-0">
     {% if payments %}
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table class="table table-hover table-stack mb-0">
         <thead>
           <tr>
             <th>Date</th>
@@ -160,17 +158,17 @@
         <tbody>
           {% for pmt in payments %}
           <tr>
-            <td>{{ pmt.date|date:"d-M-Y" }}</td>
-            <td>
+            <td data-label="Date">{{ pmt.date|date:"d-M-Y" }}</td>
+            <td data-label="Invoice">
               {% if pmt.invoice %}
               <a href="{% url 'billing:invoice_detail' pmt.invoice.pk %}" class="small text-decoration-none">
                 {{ pmt.invoice.invoice_no }}
               </a>
               {% else %}<span class="text-muted small">Advance</span>{% endif %}
             </td>
-            <td class="text-end fw-600 text-success">{{ pmt.amount|currency }}</td>
-            <td><span class="badge bg-light text-dark">{{ pmt.mode }}</span></td>
-            <td class="small text-muted">{{ pmt.reference_no|default:"—" }}</td>
+            <td class="text-end fw-600 text-success" data-label="Amount">{{ pmt.amount|currency }}</td>
+            <td data-label="Mode"><span class="badge bg-light text-dark">{{ pmt.mode }}</span></td>
+            <td class="small text-muted" data-label="Reference">{{ pmt.reference_no|default:"—" }}</td>
           </tr>
           {% endfor %}
         </tbody>

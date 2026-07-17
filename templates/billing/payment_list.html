@@ -44,7 +44,7 @@
   <div class="card-body p-0">
     {% if page_obj.object_list %}
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
+      <table class="table table-hover table-stack mb-0">
         <thead>
           <tr>
             <th>Date</th>
@@ -59,13 +59,13 @@
         <tbody>
           {% for pmt in page_obj %}
           <tr>
-            <td class="text-nowrap">{{ pmt.date|date:"d-M-Y" }}</td>
-            <td>
+            <td class="text-nowrap" data-label="Date">{{ pmt.date|date:"d-M-Y" }}</td>
+            <td data-label="Party">
               <a href="{% url 'billing:party_detail' pmt.party.pk %}" class="text-decoration-none">
                 {{ pmt.party.name }}
               </a>
             </td>
-            <td>
+            <td data-label="Invoice">
               {% if pmt.invoice %}
               <a href="{% url 'billing:invoice_detail' pmt.invoice.pk %}" class="text-decoration-none small">
                 {{ pmt.invoice.invoice_no }}
@@ -74,10 +74,10 @@
               <span class="text-muted small">Advance</span>
               {% endif %}
             </td>
-            <td class="text-end fw-600 text-success">{{ pmt.amount|currency }}</td>
-            <td><span class="badge bg-light text-dark">{{ pmt.mode }}</span></td>
-            <td class="small text-muted">{{ pmt.reference_no|default:"—" }}</td>
-            <td class="small text-muted">{{ pmt.notes|default:"—"|truncatechars:30 }}</td>
+            <td class="text-end fw-600 text-success" data-label="Amount">{{ pmt.amount|currency }}</td>
+            <td data-label="Mode"><span class="badge bg-light text-dark">{{ pmt.mode }}</span></td>
+            <td class="small text-muted" data-label="Reference">{{ pmt.reference_no|default:"—" }}</td>
+            <td class="small text-muted" data-label="Notes">{{ pmt.notes|default:"—"|truncatechars:30 }}</td>
           </tr>
           {% endfor %}
         </tbody>

@@ -9,7 +9,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, F, DecimalField
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -23,7 +24,12 @@ from .forms import (
     DateRangeFilterForm, CompanyProfileForm,
 )
 from .models import Invoice, InvoiceItem, Payment, Party, CompanyProfile
-from .utils import get_party_balance, amount_in_words
+from .utils import (
+    get_party_balance, get_party_balances_bulk, invoice_status_from_totals, amount_in_words,
+)
+
+# Reused wherever we need each invoice's payments total without a per-row query.
+_WITH_RECEIVED = Coalesce(Sum('payments__amount'), Decimal('0'), output_field=DecimalField())
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -72,10 +78,11 @@ def dashboard(request):
     sgst_total = invoices_qs.aggregate(t=Sum('sgst_amount'))['t'] or Decimal('0')
     total_tax = cgst_total + sgst_total
 
-    # Monthly chart data — last 12 months
-    monthly_labels = []
-    monthly_invoiced = []
-    monthly_received = []
+    # Monthly chart data — last 12 months.
+    # Compute the 12 (month_start, month_end, label) windows first, then pull
+    # all invoices/payments spanning the whole range in 2 queries and sum
+    # them in Python — instead of 24 separate DB round-trips (1 per month).
+    months = []
     for i in range(11, -1, -1):
         ref = today.replace(day=1) - timedelta(days=i * 28)
         month_start = ref.replace(day=1)
@@ -83,11 +90,29 @@ def dashboard(request):
             month_end = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
         else:
             month_end = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
-        label = month_start.strftime('%b %Y')
-        inv = Invoice.objects.filter(date__gte=month_start, date__lte=month_end).aggregate(
-            t=Sum('total_amount'))['t'] or 0
-        rec = Payment.objects.filter(date__gte=month_start, date__lte=month_end).aggregate(
-            t=Sum('amount'))['t'] or 0
+        months.append((month_start, month_end, month_start.strftime('%b %Y')))
+
+    range_start = months[0][0]
+    range_end = months[-1][1]
+    invoices_range = list(
+        Invoice.objects.filter(date__gte=range_start, date__lte=range_end).values('date', 'total_amount')
+    )
+    payments_range = list(
+        Payment.objects.filter(date__gte=range_start, date__lte=range_end).values('date', 'amount')
+    )
+
+    monthly_labels = []
+    monthly_invoiced = []
+    monthly_received = []
+    for month_start, month_end, label in months:
+        inv = sum(
+            (r['total_amount'] for r in invoices_range if month_start <= r['date'] <= month_end),
+            Decimal('0'),
+        )
+        rec = sum(
+            (r['amount'] for r in payments_range if month_start <= r['date'] <= month_end),
+            Decimal('0'),
+        )
         monthly_labels.append(label)
         monthly_invoiced.append(float(inv))
         monthly_received.append(float(rec))
@@ -102,12 +127,13 @@ def dashboard(request):
     top_party_data = [float(p.invoiced or 0) for p in top_parties]
 
     # Party-wise outstanding
-    all_parties = Party.objects.all()
-    party_balances = []
-    for p in all_parties:
-        bal = get_party_balance(p)
-        if bal['outstanding'] != 0:
-            party_balances.append({'party': p, **bal})
+    all_parties = list(Party.objects.all())
+    balances_by_party = get_party_balances_bulk(all_parties)
+    party_balances = [
+        {'party': p, **balances_by_party[p.pk]}
+        for p in all_parties
+        if balances_by_party[p.pk]['outstanding'] != 0
+    ]
     party_balances.sort(key=lambda x: x['outstanding'], reverse=True)
 
     context = {
@@ -132,11 +158,9 @@ def dashboard(request):
 
 @login_required
 def party_list(request):
-    parties = Party.objects.all()
-    party_data = []
-    for p in parties:
-        bal = get_party_balance(p)
-        party_data.append({'party': p, **bal})
+    parties = list(Party.objects.all())
+    balances_by_party = get_party_balances_bulk(parties)
+    party_data = [{'party': p, **balances_by_party[p.pk]} for p in parties]
     party_data.sort(key=lambda x: x['outstanding'], reverse=True)
     return render(request, 'billing/party_list.html', {'party_data': party_data})
 
@@ -144,12 +168,20 @@ def party_list(request):
 @login_required
 def party_detail(request, pk):
     party = get_object_or_404(Party, pk=pk)
-    invoices = party.invoices.all().order_by('-date')
-    payments = party.payments.all().order_by('-date')
+    invoices = party.invoices.annotate(total_received=_WITH_RECEIVED).order_by('-date')
+    invoice_rows = [
+        {
+            'invoice': inv,
+            'outstanding': inv.total_amount - inv.total_received,
+            'status': invoice_status_from_totals(inv.total_amount, inv.total_received),
+        }
+        for inv in invoices
+    ]
+    payments = party.payments.select_related('invoice').order_by('-date')
     balance = get_party_balance(party)
     return render(request, 'billing/party_detail.html', {
         'party': party,
-        'invoices': invoices,
+        'invoice_rows': invoice_rows,
         'payments': payments,
         **balance,
     })
@@ -188,21 +220,26 @@ def party_edit(request, pk):
 
 @login_required
 def invoice_list(request):
-    qs = Invoice.objects.select_related('party').order_by('-date', '-_seq')
+    # total_received is annotated here (1 extra JOIN+SUM in the same query)
+    # instead of calling inv.get_outstanding()/get_status() per row, which
+    # would each re-query payments — 2-3 extra round-trips x 25 rows/page.
+    qs = Invoice.objects.select_related('party').annotate(
+        total_received=_WITH_RECEIVED
+    ).order_by('-date', '-_seq')
     filter_form = DateRangeFilterForm(request.GET or None)
     qs = _apply_invoice_filters(qs, filter_form)
 
     paginator = Paginator(qs, 25)
     page_obj = paginator.get_page(request.GET.get('page'))
 
-    # Annotate outstanding per page
-    invoice_rows = []
-    for inv in page_obj:
-        invoice_rows.append({
+    invoice_rows = [
+        {
             'invoice': inv,
-            'outstanding': inv.get_outstanding(),
-            'status': inv.get_status(),
-        })
+            'outstanding': inv.total_amount - inv.total_received,
+            'status': invoice_status_from_totals(inv.total_amount, inv.total_received),
+        }
+        for inv in page_obj
+    ]
 
     return render(request, 'billing/invoice_list.html', {
         'filter_form': filter_form,
@@ -217,14 +254,16 @@ def invoice_detail(request, pk):
     company = CompanyProfile.get_solo()
     items = invoice.items.all()
     payments = invoice.payments.all()
-    outstanding = invoice.get_outstanding()
-    status = invoice.get_status()
+    received = invoice.get_total_received()
+    outstanding = invoice.total_amount - received
+    status = invoice_status_from_totals(invoice.total_amount, received)
     amount_words = amount_in_words(invoice.total_amount)
     return render(request, 'billing/invoice_detail.html', {
         'invoice': invoice,
         'company': company,
         'items': items,
         'payments': payments,
+        'received': received,
         'outstanding': outstanding,
         'status': status,
         'amount_words': amount_words,
@@ -324,14 +363,20 @@ def invoice_pdf(request, pk):
             )
             if os.path.isfile(path):
                 return path
-        # Handle static files
+        # Handle static files. STATIC_ROOT is only populated after
+        # `collectstatic` (production build step) and its filenames are
+        # content-hashed by ManifestStaticFilesStorage, so `{% static %}`
+        # already points there correctly once deployed. Locally (no
+        # collectstatic run yet), fall back to the source STATICFILES_DIRS
+        # so static images still resolve during development.
         if uri.startswith(settings.STATIC_URL):
-            path = os.path.join(
-                settings.STATIC_ROOT or settings.STATICFILES_DIRS[0],
-                uri.replace(settings.STATIC_URL, '').lstrip('/'),
-            )
-            if os.path.isfile(path):
-                return path
+            rel_path = uri.replace(settings.STATIC_URL, '').lstrip('/')
+            candidates = [settings.STATIC_ROOT] if settings.STATIC_ROOT else []
+            candidates += list(settings.STATICFILES_DIRS)
+            for root in candidates:
+                path = os.path.join(root, rel_path)
+                if os.path.isfile(path):
+                    return path
         return uri
 
     # Total quantity for the totals row
@@ -426,8 +471,14 @@ def payment_create(request):
 def party_invoices(request):
     """AJAX: return unpaid/partial invoices for a given party as JSON."""
     party_id = request.GET.get('party_id')
-    invoices = Invoice.objects.filter(party_id=party_id).order_by('-date') if party_id else Invoice.objects.none()
-    data = [{'id': inv.pk, 'text': f'{inv.invoice_no} — ₹{inv.get_outstanding()} outstanding'} for inv in invoices]
+    invoices = (
+        Invoice.objects.filter(party_id=party_id).annotate(total_received=_WITH_RECEIVED).order_by('-date')
+        if party_id else Invoice.objects.none()
+    )
+    data = [
+        {'id': inv.pk, 'text': f'{inv.invoice_no} — ₹{inv.total_amount - inv.total_received} outstanding'}
+        for inv in invoices
+    ]
     return JsonResponse({'invoices': data})
 
 

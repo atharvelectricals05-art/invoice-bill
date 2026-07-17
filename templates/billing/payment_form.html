@@ -31,7 +31,7 @@
               <option value="">— Select invoice —</option>
               {% for inv in form.invoice.field.queryset %}
               <option value="{{ inv.pk }}" {% if form.invoice.value == inv.pk %}selected{% endif %}>
-                {{ inv.invoice_no }} — ₹{{ inv.get_outstanding }} outstanding
+                {{ inv.invoice_no }} — ₹{{ inv.total_amount|subtract:inv.total_received }} outstanding
               </option>
               {% endfor %}
             </select>

@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -7,6 +8,13 @@
 @page {
     size: A4 portrait;
     margin: 5mm 6mm 5mm 6mm;
+    /* Pre-faded image (not the crisp logo) — xhtml2pdf's background-opacity
+       triggers a Windows temp-file bug (PermissionError re-opening its own
+       lock file), so the faded look is baked into the pixels instead. */
+    background-image: url({% static 'img/invoice_watermark.png' %});
+    background-width: 150mm;
+    background-height: 42mm;
+    background-object-position: 30mm 128mm;
 }
 body {
     font-family: Helvetica, Arial, sans-serif;
@@ -79,17 +87,22 @@ table.itm td {
 ═══════════════════════════════════════════════════════════ -->
 <table class="sec first" cellspacing="0">
 <tr>
-  <td style="text-align:center; padding:5pt; border-bottom:1.5pt solid #000;">
+  <td style="width:82%; text-align:center; padding:5pt; border-bottom:1.5pt solid #000;">
     <div style="font-size:14pt; font-weight:bold;">{{ company.name|upper }}</div>
     {% if company.formerly_known_as %}
     <div style="font-size:7.5pt; font-style:italic;">(Formerly known as "{{ company.formerly_known_as }}")</div>
     {% endif %}
-    <div style="font-size:7.5pt;">{{ company.address }}</div>
-    <div style="font-size:7.5pt;">
+    <div style="font-size:9.5pt; font-weight:bold; margin-top:2pt;">{{ company.address }}</div>
+    <div style="font-size:9.5pt; font-weight:bold;">
       {% if company.phone %}Ph.: {{ company.phone }}{% endif %}
-      {% if company.email %} , Mob. E.mail.:{{ company.email }}{% endif %}
+      {% if company.email %} , E-mail: {{ company.email }}{% endif %}
     </div>
-    <span style="background:#cc0000; color:#fff; font-size:7pt; font-weight:bold; padding:1pt 6pt;">E-Invoice</span>
+    <span style="border:1pt solid #000; color:#000; font-size:8.5pt; font-weight:bold; padding:1.5pt 8pt; margin-top:3pt; display:inline-block;">E-Invoice</span>
+  </td>
+  <td style="width:18%; text-align:right; vertical-align:middle; padding:5pt; border-bottom:1.5pt solid #000;">
+    {% if company.logo %}
+    <img src="{{ company.logo.url }}" style="width:72pt; height:20pt;">
+    {% endif %}
   </td>
 </tr>
 </table>
@@ -231,8 +244,8 @@ table.itm td {
   </td>
   <td class="rb bb" style="width:25%; padding:4pt 5pt;">
     Taxable : &nbsp;&nbsp;{{ invoice.subtotal }}<br>
-    CGST : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ invoice.cgst_amount }}<br>
-    SGST : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ invoice.sgst_amount }}<br>
+    CGST @ {{ items.0.cgst_rate|floatformat:"-2" }}% : &nbsp;&nbsp;{{ invoice.cgst_amount }}<br>
+    SGST @ {{ items.0.sgst_rate|floatformat:"-2" }}% : &nbsp;&nbsp;{{ invoice.sgst_amount }}<br>
     Round Off &nbsp;{{ invoice.round_off }}<br>
     <br>
     <span class="b">Invoice Amt: {{ invoice.total_amount }}</span>

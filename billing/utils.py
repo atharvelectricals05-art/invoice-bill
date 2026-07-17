@@ -80,3 +80,46 @@ def get_party_balance(party):
         'total_received': total_received,
         'outstanding': outstanding,
     }
+
+
+def invoice_status_from_totals(total_amount, total_received):
+    """Same thresholds as Invoice.get_status(), computed from an already-fetched
+    total_received instead of issuing a fresh payments query per invoice."""
+    from .models import Invoice
+
+    total_received = total_received or Decimal('0')
+    outstanding = total_amount - total_received
+    if outstanding <= 0:
+        return Invoice.STATUS_PAID
+    elif total_received > 0:
+        return Invoice.STATUS_PARTIAL
+    return Invoice.STATUS_UNPAID
+
+
+def get_party_balances_bulk(parties):
+    """Same result as calling get_party_balance() per party, but for a whole
+    list of parties in 2 queries total instead of 2*N (avoids the N+1 that
+    made the dashboard/party list take 15-20s with real network latency)."""
+    from .models import Invoice, Payment
+
+    party_ids = [p.pk for p in parties]
+    invoiced_map = dict(
+        Invoice.objects.filter(party_id__in=party_ids)
+        .values('party_id').annotate(t=Sum('total_amount'))
+        .values_list('party_id', 't')
+    )
+    received_map = dict(
+        Payment.objects.filter(party_id__in=party_ids)
+        .values('party_id').annotate(t=Sum('amount'))
+        .values_list('party_id', 't')
+    )
+    balances = {}
+    for p in parties:
+        total_invoiced = invoiced_map.get(p.pk) or Decimal('0')
+        total_received = received_map.get(p.pk) or Decimal('0')
+        balances[p.pk] = {
+            'total_invoiced': total_invoiced,
+            'total_received': total_received,
+            'outstanding': total_invoiced - total_received,
+        }
+    return balances
