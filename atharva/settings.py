@@ -104,10 +104,28 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Supabase Storage is used for uploaded media (company logo) so files persist
+# across Render redeploys instead of living only on the ephemeral local disk.
+# Falls back to local FileSystemStorage when the keys aren't configured
+# (e.g. a fresh local checkout before .env is filled in).
+SUPABASE_URL = config('SUPABASE_URL', default='')
+SUPABASE_SERVICE_ROLE_KEY = config('SUPABASE_SERVICE_ROLE_KEY', default='')
+SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET', default='logo')
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'billing.storage.SupabaseStorage'
+        if (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+        else 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
