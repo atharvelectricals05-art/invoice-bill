@@ -86,9 +86,17 @@
               <a href="{% url 'billing:invoice_detail' row.invoice.pk %}" class="btn btn-sm btn-outline-secondary me-1" title="View">
                 <i class="bi bi-eye"></i>
               </a>
-              <a href="{% url 'billing:invoice_pdf' row.invoice.pk %}" class="btn btn-sm btn-dark-navy" title="Download PDF" target="_blank">
+              <a href="{% url 'billing:invoice_pdf' row.invoice.pk %}" class="btn btn-sm btn-dark-navy me-1" title="Download PDF" target="_blank">
                 <i class="bi bi-file-pdf"></i>
               </a>
+              <form method="post" action="{% url 'billing:invoice_delete' row.invoice.pk %}" class="d-inline"
+                    data-no-progress
+                    onsubmit="return confirm('Delete invoice {{ row.invoice.invoice_no }}? This cannot be undone.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
             </td>
           </tr>
           {% endfor %}

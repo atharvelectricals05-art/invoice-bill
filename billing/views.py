@@ -14,6 +14,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, View,
@@ -268,6 +269,16 @@ def invoice_detail(request, pk):
         'status': status,
         'amount_words': amount_words,
     })
+
+
+@login_required
+@require_POST
+def invoice_delete(request, pk):
+    invoice = get_object_or_404(Invoice, pk=pk)
+    invoice_no = invoice.invoice_no
+    invoice.delete()
+    messages.success(request, f'Invoice {invoice_no} deleted.')
+    return redirect('billing:invoice_list')
 
 
 @login_required
