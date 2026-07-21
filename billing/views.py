@@ -382,18 +382,6 @@ def invoice_pdf(request, pk):
     # Total quantity for the totals row
     total_qty = sum(item.qty for item in items)
 
-    # Size the header logo from its real aspect ratio instead of forcing a
-    # fixed box — a fixed box squishes/stretches any logo that isn't already
-    # close to that exact ratio, which is why user-uploaded logos looked thin.
-    logo_w_pt, logo_h_pt = 72, 20
-    if company.logo:
-        try:
-            img_w, img_h = company.logo.width, company.logo.height
-            scale = min(72 / img_w, 22 / img_h)
-            logo_w_pt, logo_h_pt = round(img_w * scale, 1), round(img_h * scale, 1)
-        except Exception:
-            pass
-
     html_string = render_to_string('billing/invoice_pdf.html', {
         'invoice': invoice,
         'company': company,
@@ -402,8 +390,6 @@ def invoice_pdf(request, pk):
         'total_qty': total_qty,
         'amount_words': amount_words,
         'request': request,
-        'logo_w_pt': logo_w_pt,
-        'logo_h_pt': logo_h_pt,
     })
 
     buffer = BytesIO()
