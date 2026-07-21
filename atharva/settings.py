@@ -132,3 +132,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+# Force re-login after 6 hours of inactivity instead of Django's 2-week
+# default — SESSION_SAVE_EVERY_REQUEST makes this a sliding window (resets
+# on every request) rather than a fixed 6-hour cutoff from login time.
+SESSION_COOKIE_AGE = 6 * 60 * 60
+SESSION_SAVE_EVERY_REQUEST = True

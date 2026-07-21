@@ -32,6 +32,12 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Safety net: nothing should ever force horizontal scroll on the page itself
+   (a flex row that doesn't wrap in time, a wide table, etc.) */
+html, body {
+  overflow-x: hidden;
+}
+
 /* ── Reset / Base ── */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -600,4 +606,12 @@ a { color: var(--accent); }
   .chart-container { height: 220px; }
   /* Full-width buttons in card footers feel more native on mobile */
   .card-footer.d-flex { flex-direction: column; gap: 0.5rem; align-items: stretch !important; }
+
+  /* Topbar action rows (dashboard filter form, detail-page button groups)
+     wrap instead of forcing the page wider than the viewport. */
+  .topbar-actions { width: 100%; justify-content: flex-start; }
+  #dashboard-filter-form input[type="date"] {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
 }

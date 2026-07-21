@@ -19,7 +19,7 @@ class Command(BaseCommand):
         company, created = CompanyProfile.objects.update_or_create(
             pk=1,
             defaults={
-                'name': 'Atharva Electricals',
+                'name': 'Atharv Electricals',
                 'formerly_known_as': '',
                 'address': '123, Electrical Market, Industrial Area, Mumbai - 400001',
                 'phone': '+91-22-12345678',

@@ -29,7 +29,7 @@ class CompanyProfile(models.Model):
 
     @classmethod
     def get_solo(cls):
-        obj, _ = cls.objects.get_or_create(pk=1, defaults={'name': 'Atharva Electricals', 'address': ''})
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={'name': 'Atharv Electricals', 'address': ''})
         return obj
 
 

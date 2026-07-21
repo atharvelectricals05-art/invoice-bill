@@ -5,7 +5,7 @@
 {% block topbar_title %}Dashboard{% endblock %}
 
 {% block topbar_actions %}
-<form method="get" class="d-flex align-items-center gap-2" id="dashboard-filter-form">
+<form method="get" class="d-flex align-items-center gap-2 flex-wrap" id="dashboard-filter-form">
   {{ filter_form.date_from }}
   <span class="text-muted small">to</span>
   {{ filter_form.date_to }}
