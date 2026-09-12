@@ -158,7 +158,7 @@ class InvoiceItem(models.Model):
 
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='items')
     hsn_code = models.CharField(max_length=10, blank=True, verbose_name='HSN Code')
-    description = models.CharField(max_length=300)
+    description = models.TextField()
     make = models.CharField(max_length=100, blank=True, help_text='e.g. MAKE - 3M')
     qty = models.DecimalField(max_digits=10, decimal_places=3)
     unit = models.CharField(max_length=5, choices=UNIT_CHOICES, default='NOS')

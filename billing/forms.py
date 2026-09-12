@@ -63,6 +63,7 @@ class InvoiceItemForm(forms.ModelForm):
             'rate', 'discount', 'cgst_rate', 'sgst_rate',
         ]
         widgets = {
+            'description': forms.Textarea(attrs={'rows': 4, 'class': 'form-control desc-textarea'}),
             'qty': forms.NumberInput(attrs={'step': '0.001', 'class': 'form-control qty-input'}),
             'rate': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control rate-input'}),
             'discount': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control disc-input'}),

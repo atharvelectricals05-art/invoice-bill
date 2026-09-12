@@ -189,7 +189,7 @@ table.itm td {
 <tr>
   <td>{{ forloop.counter }}</td>
   <td style="text-align:left; font-size:7pt;">
-    {% if item.hsn_code %}<b>{{ item.hsn_code }}</b> - {% endif %}{{ item.description }}{% if item.make %}<br>MAKE - {{ item.make }}{% endif %}
+    {% if item.hsn_code %}<b>{{ item.hsn_code }}</b> - {% endif %}{{ item.description|linebreaksbr }}{% if item.make %}<br>MAKE - {{ item.make }}{% endif %}
   </td>
   <td style="text-align:right;">{{ item.qty }}</td>
   <td>{{ item.unit }}</td>

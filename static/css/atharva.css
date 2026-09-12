@@ -397,6 +397,13 @@ a { color: var(--accent); }
 
 .item-row:hover { border-color: var(--accent); box-shadow: var(--shadow-xs); }
 
+.desc-textarea {
+  resize: vertical;
+  min-height: 5.2rem;
+  max-height: 9rem;
+  line-height: 1.35;
+}
+
 .remove-item-btn {
   cursor: pointer;
   color: var(--danger);

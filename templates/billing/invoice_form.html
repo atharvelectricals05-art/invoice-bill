@@ -90,7 +90,7 @@
               {% if not item_form.DELETE.value %}
               <div class="item-row" data-row-index="{{ forloop.counter0 }}">
                 {{ item_form.id }}
-                <div class="row g-2 align-items-end">
+                <div class="row g-2 align-items-start">
                   <div class="col-md-5">
                     <label class="form-label">Description *</label>
                     {{ item_form.description }}
@@ -152,10 +152,10 @@
           <template id="empty-form-template">
             <div class="item-row" data-row-index="__prefix__">
               <input type="hidden" name="items-__prefix__-id" id="id_items-__prefix__-id">
-              <div class="row g-2 align-items-end">
+              <div class="row g-2 align-items-start">
                 <div class="col-md-5">
                   <label class="form-label">Description *</label>
-                  <input type="text" name="items-__prefix__-description" id="id_items-__prefix__-description" class="form-control" required>
+                  <textarea name="items-__prefix__-description" id="id_items-__prefix__-description" class="form-control desc-textarea" rows="4" required></textarea>
                 </div>
                 <div class="col-md-3">
                   <label class="form-label">HSN Code</label>

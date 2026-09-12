@@ -104,7 +104,7 @@
               <tr>
                 <td>{{ forloop.counter }}</td>
                 <td>
-                  <div class="fw-500">{{ item.description }}</div>
+                  <div class="fw-500">{{ item.description|linebreaksbr }}</div>
                   {% if item.make %}<div class="small text-muted">{{ item.make }}</div>{% endif %}
                   {% if item.hsn_code %}<div class="small text-muted">HSN: {{ item.hsn_code }}</div>{% endif %}
                 </td>
